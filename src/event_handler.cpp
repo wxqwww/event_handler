@@ -34,7 +34,7 @@ static void do_signal_events(int signum)
 	sigset_t old_signal_mask;
 	sigemptyset(&old_signal_mask);
 	//set new sigmask and save old sigmask
-	if(sigprocmask(SIG_BLOCK, &(event_handler::get_signal_mask()), &old_signal_mask) == -1)
+	if(sigprocmask(SIG_SETMASK, &(event_handler::get_signal_mask()), &old_signal_mask) == -1)
 	{
 		perror("sigprocmask");
 		exit(EXIT_FAILURE);
@@ -50,7 +50,7 @@ static void do_signal_events(int signum)
 		}
 	}
 	//restore old sigmask
-	if(sigprocmask(SIG_BLOCK, &old_signal_mask, NULL) == -1)
+	if(sigprocmask(SIG_SETMASK, &old_signal_mask, NULL) == -1)
 	{
 		perror("sigprocmask");
 		exit(EXIT_FAILURE);
@@ -206,7 +206,24 @@ long long event_handler::get_soft_timer_min_msec(long long have_sleep_msec, bool
 		//the timer is alarm
 		if(iter->d_begin <= 0)
 		{
-			iter->d_pevent->do_timer_event();
+			{
+				sigset_t old_signal_mask;
+				sigemptyset(&old_signal_mask);
+				//set new sigmask and save old sigmask
+				if(sigprocmask(SIG_SETMASK, &(event_handler::get_signal_mask()), &old_signal_mask) == -1)
+				{
+					perror("sigprocmask");
+					exit(EXIT_FAILURE);
+				}
+				//do timer event function
+				iter->d_pevent->do_timer_event();
+				//restore old sigmask
+				if(sigprocmask(SIG_SETMASK, &old_signal_mask, NULL) == -1)
+				{
+					perror("sigprocmask");
+					exit(EXIT_FAILURE);
+				}
+			}
 			timer_event_t &tmp = *iter;
 			//move alarm event to free_list
 			if(tmp.d_interval != 0)
